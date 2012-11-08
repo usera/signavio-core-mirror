@@ -154,7 +154,7 @@
 	<target name="com.signavio.editor.war" depends="com.signavio.editor.build, com.signavio.editor.web">
 		<mkdir dir="${target}" />
 
-		<war destfile="${target}/editor.war" webxml="${build}/WEB-INF/web.xml">
+		<war destfile="${target}/editor.war" webxml="${build}/WEB-INF/web.xml" duplicate="preserve">
 			<fileset dir="${build}" />
 		</war>
 	</target>

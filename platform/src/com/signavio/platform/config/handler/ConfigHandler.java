@@ -38,7 +38,7 @@ import com.signavio.platform.security.business.FsSecurityManager;
 import com.signavio.platform.tenant.business.FsTenant;
 import com.signavio.usermanagement.user.business.FsUser;
 
-@HandlerConfiguration(uri="/config")
+@HandlerConfiguration(uri="/config", rel="config")
 public class ConfigHandler extends BasisHandler {
 
 	public ConfigHandler(ServletContext servletContext) {
