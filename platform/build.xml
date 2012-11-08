@@ -39,13 +39,17 @@
     <target name="com.signavio.platform.war" depends="com.signavio.platform.compile">
         <war destfile="${dir-target}/${file-war}.war"
          webxml="${dir-webinf}/web.xml"
-         update="true">
+         update="true" duplicate="preserve" >
             
             <fileset dir="${dir-webcontent}">
                 <exclude name="WEB-INF/"/>
                 <exclude name="META-INF/"/>
             </fileset>
-            
+			
+			<lib dir="${dir-lib-buildtime}">
+
+			</lib>
+
 			<webinf dir="${dir-webinf}" />
             
             <classes dir="${dir-classes}"/>

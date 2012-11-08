@@ -212,7 +212,7 @@ public class FsModel extends FsSecureBusinessObject {
 	 * 
 	 */
 	
-	private String getPath(){
+	public String getPath(){
 		return pathPrefix + File.separator + name + fileExtension;
 	}
 	

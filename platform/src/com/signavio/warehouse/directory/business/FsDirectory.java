@@ -359,7 +359,7 @@ public class FsDirectory extends FsSecureBusinessObject {
 		}
 		path = path.replace(File.separator, ";");
 		return path;
-	}
+	} 
 	
 	public List<FsDirectory> getParentDirectories() {
 		List<FsDirectory> parents = new ArrayList<FsDirectory>();

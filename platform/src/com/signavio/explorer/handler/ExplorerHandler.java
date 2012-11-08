@@ -52,6 +52,7 @@ public class ExplorerHandler extends BasisHandler {
 			addJSPAttributes(req);
 			req.setAttribute("language", token.getUser().getAccount().getLanguageCode());
 			req.setAttribute("country", token.getUser().getAccount().getCountryCode());
+			req.setAttribute("contextPath", "/apertemodeler");
 			res.setContentType("text/html");
 			getServletContext().getRequestDispatcher("/WEB-INF/jsp/explorer.jsp").include(req, res);
 			//res.sendRedirect(INDEX_PAGE_URI);

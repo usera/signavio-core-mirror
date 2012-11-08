@@ -31,8 +31,8 @@ var PREFER_SPANS_OVER_DIVS =			true;
 var PREFER_TITLE_OVER_TEXTNODE =		false;
 var RESOURCE_ID_PREFIX =				'resource';
 
-var SHOW_DEBUG_ALERTS_WHEN_SAVING =	false;
-var SHOW_EXTENDED_DEBUG_INFORMATION =	false;
+var SHOW_DEBUG_ALERTS_WHEN_SAVING =	true;
+var SHOW_EXTENDED_DEBUG_INFORMATION =	true;
 
 /*
  * Back end specific workarounds.

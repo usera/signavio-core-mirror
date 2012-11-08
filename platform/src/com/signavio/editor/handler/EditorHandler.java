@@ -60,12 +60,13 @@ import com.signavio.warehouse.revision.business.RepresentationType;
 public class EditorHandler extends BasisHandler {
 
 	public final String EDITOR_URL_PREFIX;
+	private ServletContext servletContext;
 	
 	private static final Pattern SUPPORTED_USER_AGENT_PATTERN = Pattern.compile(Platform.getInstance().getPlatformProperties().getSupportedBrowserEditorRegExp());
 	
 	public EditorHandler(ServletContext servletContext) {
 		super(servletContext);
-		
+		this.servletContext = servletContext;
 		EDITOR_URL_PREFIX = Platform.getInstance().getPlatformProperties().getEditorUri() + "/";
 	}
 
@@ -87,9 +88,14 @@ public class EditorHandler extends BasisHandler {
 			addJSPAttributes(req);
 			try {
 				req.getRequestDispatcher("/WEB-INF/jsp/browser.jsp").include(req, res);
-			} catch (ServletException e) {
+			} catch (ServletException e) 
+			{
+				servletContext.log("PROBLEM: RequestException", e);
 				throw new RequestException("servletException", e);
-			} catch (IOException e) {
+			} 
+			catch (IOException e) 
+			{
+				servletContext.log("PROBLEM: IORequestException", e);
 				throw new IORequestException(e);
 			}
 		} else {
@@ -108,20 +114,27 @@ public class EditorHandler extends BasisHandler {
 					revision = jParams.getString("revision");
 				}
 				
+				servletContext.log("ID: "+id);
+				
 				if(jParams.has("data")) {
 					//editor requested model data (json)
 					String json = getJSONString(id, revision, token, req);
+					
+					servletContext.log("DATA, json: "+json);
 					res.setStatus(200);
 					res.setContentType("application/json");
 					try {
 						res.getWriter().print(json);
-					} catch (IOException e) {
+						servletContext.log("END");
+					} catch (IOException e) 
+					{
+						servletContext.log("PROBLEM: RequestException", e);
 						throw new RequestException("platform.ioexception", e);
 					}
 				} else {
 					FsAccount account = token.getAccount();
 			  		
-			  		
+					servletContext.log("FsAccount, account: "+account.getFullName());
 					try {
 						//try to get the sbo for the id
 						FsSecureBusinessObject tempsbo = FsSecurityManager.getInstance().loadObject(id, token);
@@ -133,6 +146,7 @@ public class EditorHandler extends BasisHandler {
 							res.setHeader("location", req.getRequestURL() + "?id=" + id);
 							//print xhtml site
 							sendEditorXHTML(res, model.getName(), account);
+							servletContext.log("END");
 						} 
 //						else if (sbo instanceof ModelRevision) {
 //							//check, if sbo is a model revision
@@ -141,12 +155,17 @@ public class EditorHandler extends BasisHandler {
 //							
 //							sendEditorXHTML(res, model.getName(), account);
 //						} 
-						else {
+						else 
+						{
+							servletContext.log("PROBLEM: invalidIdentifier");
 							throw new RequestException("editor.invalidIdentifier");
 						}
 						
 						
-					} catch (BusinessObjectDoesNotExistException e) {
+					} 
+					catch (BusinessObjectDoesNotExistException e) 
+					{
+						servletContext.log("PROBLEM: BusinessObjectDoesNotExistException", e);
 						//id is no existing model/revision, get info from session
 						//Map<String,String> tempModelInfo = (Map<String,String>) req.getSession().getAttribute(id);
 						addJSPAttributes(req);
@@ -171,7 +190,10 @@ public class EditorHandler extends BasisHandler {
 					}
 				}
 				
-			} catch (JSONException e) {
+			} 
+	  		catch (JSONException e) 
+			{
+	  			servletContext.log("PROBLEM: JSON", e);
 				//no id supplied, get stencilset namespace and directory id
 				try {
 					String stencilset = jParams.getString("stencilset");
@@ -196,9 +218,15 @@ public class EditorHandler extends BasisHandler {
 					//String url = Platform.getInstance().getPlatformProperties().getServerName() + req.getRequestURI();
 					
 					res.sendRedirect(req.getRequestURI() + "?id=" + uuid.toString());
-				} catch(JSONException e2) {
+				} 
+				catch(JSONException e2) 
+				{
+					servletContext.log("PROBLEM: JSON", e2);
 					res.setStatus(405);
-				} catch (IOException e3) {
+				} 
+				catch (IOException e3) 
+				{
+					servletContext.log("PROBLEM: JSON", e3);
 					throw new RequestException("platform.ioexception", e3);
 				}
 			}
@@ -217,7 +245,7 @@ public class EditorHandler extends BasisHandler {
 		try {
 			res.getWriter().print(getEditorXHTML(title, languageCode, countryCode));
 		} catch (IOException e) {
-
+			servletContext.log("PROBLEM: IOException", e);
 		}
 	}
     
@@ -342,6 +370,7 @@ public class EditorHandler extends BasisHandler {
     			FsDirectory dir = model.getParentDirectory();
     			
     			directory = dir.getId();
+    			servletContext.log("getJSONString: DIRECTORY: name="+dir.getName()+", path="+dir.getPath()+", id="+directory);
     		
     		//id referencens a model revision
     		} 

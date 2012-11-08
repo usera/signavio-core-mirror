@@ -14,6 +14,7 @@ import org.apache.log4j.Logger;
 
 import com.signavio.platform.core.Platform;
 import com.signavio.platform.core.PlatformProperties;
+import com.signavio.platform.servlets.DispatcherServlet;
 
 /**
  * Filter to provide authentication between modeler webapp and aperte runtime environment
@@ -21,10 +22,11 @@ import com.signavio.platform.core.PlatformProperties;
 public class AperteTokenFilter implements Filter {
 
     private static final String APERTE_TOKEN_ATTRIBUTE_NAME = "aperteToken";
-    
+	
+	private FilterConfig filterConfig;
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
-        // do nothing
+        this.filterConfig = filterConfig;
     }
 
     @Override
@@ -43,8 +45,15 @@ public class AperteTokenFilter implements Filter {
             } else {
                 //check token using background channel
                 URL u = new URL(props.getServerName() + props.getJbpmGuiUrl() + "/v_token?token=" + req.getParameter("token"));
+                filterConfig.getServletContext().log("url: "+u);
+                
                 //it has to be url connection!
                 HttpURLConnection urlConnection = (HttpURLConnection) u.openConnection();
+                
+                filterConfig.getServletContext().log("urlConnection: "+urlConnection);
+                
+                filterConfig.getServletContext().log("getResponseCode: "+urlConnection.getResponseCode());
+                
                 if (urlConnection.getResponseCode() == 200) {
                     String login = "";
                     InputStream is = urlConnection.getInputStream();
@@ -54,8 +63,13 @@ public class AperteTokenFilter implements Filter {
                     }
                     session.setAttribute(APERTE_TOKEN_ATTRIBUTE_NAME, login);
 
+                    filterConfig.getServletContext().log("AperteTokenFilter complete");
+                    
                     filterChain.doFilter(req, res);
-                } else {
+                } 
+                else 
+                {
+                	filterConfig.getServletContext().log("AperteTokenFilter no redirect");
                     res.setStatus(401);//do not redirect, this may result in infinite loop and server ddos
                 }
 
