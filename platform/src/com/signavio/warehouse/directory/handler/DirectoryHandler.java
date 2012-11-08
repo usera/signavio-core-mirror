@@ -21,6 +21,8 @@
  */
 package com.signavio.warehouse.directory.handler;
 
+import java.io.File;
+
 import javax.servlet.ServletContext;
 
 import org.json.JSONArray;
@@ -38,6 +40,7 @@ import com.signavio.platform.security.business.FsSecureBusinessSubject;
 import com.signavio.platform.security.business.FsSecurityManager;
 import com.signavio.warehouse.business.FsEntityManager;
 import com.signavio.warehouse.directory.business.FsDirectory;
+import com.signavio.warehouse.directory.business.FsRootDirectory;
 import com.signavio.warehouse.model.business.FsModel;
 
 
@@ -48,7 +51,9 @@ import com.signavio.warehouse.model.business.FsModel;
  *
  */
 @HandlerConfiguration(uri = "/directory", rel="dir")
-public class DirectoryHandler extends BasisHandler {
+public class DirectoryHandler extends BasisHandler 
+{
+	private ServletContext servletContext;
 
 	/**
 	 * Constructor
@@ -56,6 +61,8 @@ public class DirectoryHandler extends BasisHandler {
 	 */
 	public DirectoryHandler(ServletContext servletContext) {
 		super(servletContext);
+		
+		this.servletContext = servletContext;
 	}
 
 	/**
@@ -77,6 +84,8 @@ public class DirectoryHandler extends BasisHandler {
 		JSONArray rep = (JSONArray) super.getRepresentation(sbo, params, token);
 			
 		FsDirectory directory = (FsDirectory) sbo;
+		
+		servletContext.log("getRepresentation: DIRECTORY: name="+directory.getName()+", path="+directory.getPath());
 		
 		for (FsDirectory childDir : directory.getChildDirectories()) {
 			rep.put( this.getDirectoryInfo(childDir));
@@ -103,7 +112,11 @@ public class DirectoryHandler extends BasisHandler {
 		
 		FsEntityManager entitiyManager = FsEntityManager.getTenantManagerInstance(FsEntityManager.class, token.getTenantId(), token);
 		// user public folder
-		j.put( getDirectoryInfo(entitiyManager.getTenantRootDirectory(), "public"));
+		FsDirectory dir = entitiyManager.getTenantRootDirectory();
+		
+		servletContext.log("DIRECTORY: name="+dir.getName()+", path="+dir.getPath());
+		
+		j.put( getDirectoryInfo(dir, "public"));
 		// user private folder
 		FsSecureBusinessSubject u = (FsSecureBusinessSubject) FsSecurityManager.getInstance().loadObject(token.getUserId(), token);
 //		j.put( getDirectoryInfo(u.getChildren(PrivateDirectory.class).iterator().next(), "private"));
@@ -126,8 +139,12 @@ public class DirectoryHandler extends BasisHandler {
 		com.signavio.warehouse.model.handler.InfoHandler in = new com.signavio.warehouse.model.handler.InfoHandler(this.getServletContext());
 		// Get the annotation from the model 
 		HandlerConfiguration modelCA = Platform.getInstance().getHandlerDirectory().get(in.getClass().getName()).getContextClass().getAnnotation(HandlerConfiguration.class);
+		
+		String path = modelCA.uri() + "/" + model.getPath().replace(File.separator, ";");
+		
+		servletContext.log("getModelInfo: rel="+modelCA.rel()+", uri="+modelCA.uri()+", id="+model.getId()+", modelClass="+model.getClass());
 
-		return this.generateResource(modelCA.rel(), modelCA.uri() + "/" + model.getId(), in.getRepresentation(model, null, model.getAccessToken()));
+		return this.generateResource(modelCA.rel(), path, in.getRepresentation(model, null, model.getAccessToken()));
 	}
 	
 	
@@ -145,6 +162,8 @@ public class DirectoryHandler extends BasisHandler {
 		HandlerConfiguration hc = this.getHandlerConfiguration();
 		JSONObject rep = getDirectoryRep(dir);
 		
+		servletContext.log("getDirectoryInfo: rel="+hc.rel()+", uri="+hc.uri());
+		
 		if (directorytype != null){
 			try {
 				rep.put("type", directorytype);
@@ -160,8 +179,8 @@ public class DirectoryHandler extends BasisHandler {
 	 * @return
 	 * @throws InvalidIdentifierException 
 	 */
-	private JSONObject getDirectoryRep( FsDirectory dir) {
-	
+	private JSONObject getDirectoryRep( FsDirectory dir) 
+	{
 		return (JSONObject) new InfoHandler(this.getServletContext()).getRepresentation( dir , null, dir.getAccessToken());
 	
 	}
@@ -183,6 +202,7 @@ public class DirectoryHandler extends BasisHandler {
 	@Override
 	public  <T extends FsSecureBusinessObject> Object putRepresentation(T sbo, Object params, FsAccessToken token) {
 		FsDirectory dir = (FsDirectory) sbo;
+		
 		JSONObject obj = (JSONObject) params;
 		try {
 			String pId = obj.get("parent").toString();
@@ -219,6 +239,10 @@ public class DirectoryHandler extends BasisHandler {
 		
 		FsDirectory parent = (FsDirectory) FsSecurityManager.getInstance().loadObject(parentId, token);
 		FsDirectory newDir = FsSecurityManager.getInstance().createObject(FsDirectory.class, parent, token, title);
+		
+		servletContext.log("postRepresentation: parent: name="+parent.getName()+", path="+parent.getPath());
+		servletContext.log("postRepresentation: newDir: name="+newDir.getName()+", path="+newDir.getPath());
+		
 		newDir.setName(title);
 		//parent.addChildDirectory(newDir);
 		

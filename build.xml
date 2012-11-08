@@ -9,6 +9,7 @@
 	<property name="platform" value="platform" />
 	<property name="explorer" value="explorer" />
 	<property name="config" value="configuration" />
+	<property name="dir-lib-buildtime" value="${platform}/lib"/>
 
 	<!-- INTERNAL TARGETS -->
 	<target name="clean">
@@ -71,7 +72,7 @@
 		<ant antfile="build.xml" target="com.signavio.platform.compile" dir="${platform}" inheritall="false" />
 
 		<!-- Build War -->
-		<war destfile="${target}/${war}.war" webxml="${platform}/WebContent/WEB-INF/web.xml" update="true">
+		<war destfile="${target}/${war}.war" webxml="${platform}/WebContent/WEB-INF/web.xml" update="true" duplicate="preserve">
 
 			<classes dir="${platform}/target/classes" />
 
@@ -111,6 +112,10 @@
 			<fileset dir="${editor}/build">
 
 			</fileset>
+			
+			<lib dir="${dir-lib-buildtime}">
+
+			</lib>
 
 		</war>
 

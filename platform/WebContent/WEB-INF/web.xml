@@ -19,6 +19,11 @@
 		<param-name>supportedBrowserEditor</param-name>
 		<param-value>Firefox[\/\s]((3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20)\.\d+)|AppleWebKit|Opera.9\.\d+</param-value>
 	</context-param>
+	
+	 <context-param>
+        <param-name>contextPath</param-name>
+        <param-value>/apertemodeler</param-value>
+    </context-param>
 
 
 
@@ -139,6 +144,18 @@
 
 	<!--MIME MAPPING-->
 	<mime-mapping>
+		<extension>js</extension>
+		<mime-type>text/javascript</mime-type>
+	</mime-mapping>
+	<mime-mapping>
+		<extension>gif</extension>
+		<mime-type>image/gif</mime-type>
+	</mime-mapping>
+	<mime-mapping>
+		<extension>png</extension>
+		<mime-type>image/png</mime-type>
+	</mime-mapping>
+	<mime-mapping>
 		<extension>svg</extension>
 		<mime-type>image/svg+xml</mime-type>
 	</mime-mapping>
@@ -154,47 +171,6 @@
 		<extension>ico</extension>
 		<mime-type>image/x-icon</mime-type>
 	</mime-mapping>
-
-	<!-- START OF SECURITY -->
-	<!--<login-config>-->
-		<!--<auth-method>FORM</auth-method>-->
-		<!--<realm-name>Modeler Form-Based Authentication Area</realm-name>-->
-		<!--<form-login-config>-->
-			<!--<form-login-page>/login.html</form-login-page>-->
-			<!--<form-error-page>/error.html</form-error-page>-->
-		<!--</form-login-config>-->
-	<!--</login-config>-->
-
-	<!--<security-constraint>-->
-		<!--<display-name>Modeler Security Constraint</display-name>-->
-		<!--<web-resource-collection>-->
-			<!--<web-resource-name>Protected Area</web-resource-name>-->
-			<!--<url-pattern>/p/*</url-pattern>-->
-		<!--</web-resource-collection>-->
-		<!---->
-		<!--<auth-constraint>-->
-			<!--<role-name>tomcat</role-name>-->
-			<!--<role-name>role1</role-name>-->
-			<!--<role-name>admin</role-name>-->
-		<!--</auth-constraint>-->
-	<!--</security-constraint>-->
-
-
-	<!--<security-role>-->
-		<!--<role-name>role1</role-name>-->
-	<!--</security-role>-->
-	<!--<security-role>-->
-		<!--<role-name>tomcat</role-name>-->
-	<!--</security-role>-->
-	<!--<security-role>-->
-		<!--<role-name>admin</role-name>-->
-	<!--</security-role>-->
-    <!-- END OF SECURITY -->
-	
-	<!--WELCOME FILE LIST-->
-	<welcome-file-list>
-		<welcome-file>welcome</welcome-file>
-	</welcome-file-list>
 	
 	<!-- Servlets from the Oryx Editor -->
 	<servlet>
@@ -310,6 +286,7 @@
     </servlet-mapping>
 
 	<welcome-file-list>
+		<welcome-file>welcome</welcome-file>
 		<welcome-file>index.html</welcome-file>
 	</welcome-file-list>
 </web-app>

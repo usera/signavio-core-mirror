@@ -22,6 +22,7 @@
 package com.signavio.platform.servlets;
 
 import java.util.Date;
+import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -32,16 +33,20 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.log4j.Logger;
+
 import com.signavio.platform.core.HandlerEntry;
 import com.signavio.platform.exceptions.RequestException;
 import com.signavio.platform.handler.ExportHandler;
+import com.signavio.platform.listeners.EntryPoint;
 import com.signavio.platform.security.business.FsAccessToken;
 import com.signavio.platform.security.business.FsSecureBusinessObject;
 import com.signavio.platform.security.business.FsSecurityManager;
 import com.signavio.platform.security.business.exceptions.BusinessObjectCreationFailedException;
 import com.signavio.platform.security.business.exceptions.BusinessObjectDoesNotExistException;
 
-public class DispatcherServlet extends HttpServlet {
+public class DispatcherServlet extends HttpServlet 
+{
 	
 	/**
 	 * 
@@ -67,6 +72,7 @@ public class DispatcherServlet extends HttpServlet {
 	public void init(ServletConfig config) throws ServletException {
 		super.init();
 		urlpattern = Pattern.compile(config.getServletContext().getContextPath() + "/(p)/([^/]+)(/([^/]+))?(/([^/]+))?(/+(.*))?$");
+		
 		servletContext = config.getServletContext();
 	}
 	
@@ -118,8 +124,11 @@ public class DispatcherServlet extends HttpServlet {
 			//throw new RequestException("platform.dispatcher.noValidToken");
 		}
 		
-		
-		
+		servletContext.log("handler class: "+handler.getClass());
+		servletContext.log("uri: "+handler.getUri());
+		servletContext.log("met: "+met);
+		servletContext.log("context: "+context);
+		servletContext.log("extension: "+extension);
 		// Try to call the Handler
 		if( met.equals("GET")){
 			handler.getHandlerInstance().doGet(req, res, token, sbo);
@@ -149,7 +158,9 @@ public class DispatcherServlet extends HttpServlet {
 		Pattern pattern = DispatcherServlet.urlpattern;
 		Matcher matcher = pattern.matcher(new StringBuffer(url));
 		
-		if (matcher.find()) {
+		boolean patternFound = matcher.find();
+		
+		if (patternFound) {
 
 			return new String[]{	
 									matcher.groupCount() >= 2 ? matcher.group(2) : null, 

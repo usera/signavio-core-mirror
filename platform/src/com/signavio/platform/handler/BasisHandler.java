@@ -41,10 +41,14 @@ import com.signavio.platform.security.business.FsSecureBusinessObject;
  * @author Willi
  *
  */
-public abstract class BasisHandler extends AbstractHandler {
+public abstract class BasisHandler extends AbstractHandler 
+{
+	ServletContext servletContext;
 
-	public BasisHandler(ServletContext servletContext) {
+	public BasisHandler(ServletContext servletContext) 
+	{
 		super(servletContext);
+		this.servletContext = servletContext;
 	}
 	
 	/**
@@ -71,6 +75,7 @@ public abstract class BasisHandler extends AbstractHandler {
 			Object js = he.getHandlerInstance().getRepresentation(sbo, params, token);
 			if( js != null )
 			{
+				servletContext.log("JSON: "+js);
 				HandlerEntry context = Platform.getInstance().getHandlerDirectory().get( he.getContextClass().getName() );
 				
 				try {
@@ -79,7 +84,11 @@ public abstract class BasisHandler extends AbstractHandler {
 					entry.put("href",  	context.getUri() + "/" + sbo.getId() + he.getUri());
 					entry.put("rep", 	js);
 					res.put(entry);
-				} catch (JSONException e) {}	
+				} 
+				catch (JSONException e) 
+				{
+					servletContext.log("JSON PROBLEM", e);
+				}	
 			}
 		}
 		return res;

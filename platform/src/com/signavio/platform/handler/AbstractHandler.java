@@ -47,6 +47,7 @@ import org.json.JSONObject;
 
 import com.signavio.platform.annotations.HandlerConfiguration;
 import com.signavio.platform.core.Platform;
+import com.signavio.platform.core.PlatformProperties;
 import com.signavio.platform.exceptions.IORequestException;
 import com.signavio.platform.exceptions.JSONRequestException;
 import com.signavio.platform.exceptions.RequestException;
@@ -77,9 +78,11 @@ public abstract class AbstractHandler {
 	public AbstractHandler(ServletContext servletContext) {
 		this.servletContext = servletContext;
 		
-		SERVER_URL = Platform.getInstance().getPlatformProperties().getServerName();
+		PlatformProperties props = Platform.getInstance().getPlatformProperties();
 		
-		PLATFORM_URI = servletContext.getContextPath() + "/p";
+		SERVER_URL = props.getServerName();
+		
+		PLATFORM_URI = props.getPlatformUri();
 	}
 	
 	/**
