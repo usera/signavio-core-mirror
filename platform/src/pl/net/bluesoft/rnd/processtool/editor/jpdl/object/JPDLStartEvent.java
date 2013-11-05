@@ -1,21 +1,20 @@
 package pl.net.bluesoft.rnd.processtool.editor.jpdl.object;
 
 import pl.net.bluesoft.rnd.processtool.editor.AperteWorkflowDefinitionGenerator;
+import pl.net.bluesoft.rnd.processtool.editor.IndentedStringBuilder;
 
 public class JPDLStartEvent extends JPDLComponent {
-
-
     public JPDLStartEvent(AperteWorkflowDefinitionGenerator generator) {
         super(generator);
     }
 
-    public String toXML() {
-		StringBuffer sb = new StringBuffer();
+    @Override
+	public void toXML(IndentedStringBuilder sb) {
 		sb.append(String.format("<start name=\"%s\" g=\"%d,%d,%d,%d\">\n", name,boundsX, boundsY, width, height));
-		//sb.append(String.format("<description>Original ID: '%s'</description>\n", resourceId));
-		sb.append(getTransitionsXML());
+		sb.begin();
+		getTransitionsXML(sb);
+		sb.end();
 		sb.append("</start>\n");
-		return sb.toString();
     }
 	
 	@Override

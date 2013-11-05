@@ -3,12 +3,12 @@ package pl.net.bluesoft.rnd.processtool.editor.jpdl.object;
 import com.signavio.platform.exceptions.RequestException;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
 import org.aperteworkflow.editor.domain.Permission;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import pl.net.bluesoft.rnd.processtool.editor.AperteWorkflowDefinitionGenerator;
+import pl.net.bluesoft.rnd.processtool.editor.IndentedStringBuilder;
 import pl.net.bluesoft.rnd.processtool.editor.Widget;
 import pl.net.bluesoft.rnd.processtool.editor.XmlUtil;
 
@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+
+import static pl.net.bluesoft.rnd.processtool.editor.XmlUtil.hasText;
 
 public class JPDLUserTask extends JPDLTask {
 
@@ -37,8 +39,7 @@ public class JPDLUserTask extends JPDLTask {
 	}
 
 	@Override
-	public String toXML() { 
-		StringBuffer sb = new StringBuffer();
+	public void toXML(IndentedStringBuilder sb) {
 		String taskConf = "";
 		if (assignee != null && assignee.trim().length() > 0)
 			taskConf = String.format("assignee=\"%s\"", assignee);
@@ -50,9 +51,10 @@ public class JPDLUserTask extends JPDLTask {
 		sb.append(String.format("<task %s name=\"%s\" g=\"%d,%d,%d,%d\">\n", taskConf,name,
                 boundsX, boundsY, width, height
         ));
-		sb.append(getTransitionsXML());
+		sb.begin();
+		getTransitionsXML(sb);
+		sb.end();
 		sb.append("</task>\n");
-		return sb.toString();
     }
 	
 	@Override
@@ -61,7 +63,7 @@ public class JPDLUserTask extends JPDLTask {
 
         // Properties from Step Editor attributes
 		String widgetJson = json.getJSONObject("properties").getString("aperte-conf");
-		if (widgetJson != null && widgetJson.trim().length() != 0) {
+		if (widgetJson != null && !widgetJson.trim().isEmpty()) {
             widget = new Widget();
             widgetJson = XmlUtil.decodeXmlEscapeCharacters(widgetJson);
             JSONObject widgetJsonObj = new JSONObject(widgetJson);
@@ -139,103 +141,113 @@ public class JPDLUserTask extends JPDLTask {
         return permissionsList;
     }
 
-    private String generateChildrenXML(List<Widget> list, boolean withChildrenTag) {
+    private void generateChildrenXML(IndentedStringBuilder sb, List<Widget> list, boolean withChildrenTag) {
 		if (list.isEmpty()) {
-		    return "";
+		    return;
         }
-		
-		StringBuilder sb = new StringBuilder();
+
 		if (withChildrenTag) {
 		    sb.append("<children>\n");
+			sb.begin();
         }
 		for (Widget w : list) {
 			sb.append(String.format("<config.ProcessStateWidget className=\"%s\" priority=\"%d\">\n", w.getWidgetId(), w.getPriority()));
-			sb.append(generateWidgetPermissionsXML(w.getPermissions()));
-			sb.append(generateAttributesXML(w.getAttributesMap()));
-			sb.append(generateChildrenXML(w.getChildrenList(), true));
+			sb.begin();
+			generateWidgetPermissionsXML(sb, w.getPermissions());
+			generateAttributesXML(sb, w.getAttributesMap());
+			generateChildrenXML(sb, w.getChildrenList(), true);
+			sb.end();
 			sb.append("</config.ProcessStateWidget>\n");
 		}
 		if (withChildrenTag) {
+			sb.end();
 		    sb.append("</children>\n");
         }
-		return sb.toString();
 	}
 	
-	private String generateAttributesXML(Map<String,Object> attributesMap) {
-		if (attributesMap.isEmpty())
-			return "";
-		StringBuilder sb = new StringBuilder();
+	private void generateAttributesXML(IndentedStringBuilder sb, Map<String,Object> attributesMap) {
+		if (attributesMap.isEmpty()) {
+			return;
+		}
+
 		sb.append("<attributes>\n");
+		sb.begin();
 		for (String key : attributesMap.keySet()) {
 			Object value = attributesMap.get(key);
             String strValue = new String(Base64.decodeBase64(((String) value).getBytes()));
             if (XmlUtil.containsXmlEscapeCharacters(strValue)) {
-                sb.append(String.format("<config.ProcessStateWidgetAttribute name=\"%s\"><value>%s</value></config.ProcessStateWidgetAttribute>", key, XmlUtil.wrapCDATA(strValue)));
+                sb.append(String.format("<config.ProcessStateWidgetAttribute name=\"%s\"><value>%s</value></config.ProcessStateWidgetAttribute>\n", key, XmlUtil.wrapCDATA(strValue)));
             } else {
-                sb.append(String.format("<config.ProcessStateWidgetAttribute name=\"%s\" value=\"%s\"/>", key, strValue));
+                sb.append(String.format("<config.ProcessStateWidgetAttribute name=\"%s\" value=\"%s\"/>\n", key, strValue));
             }
 		}
+		sb.end();
 		sb.append("</attributes>\n");
-		return sb.toString();
 	}
 	
-	private String generateWidgetPermissionsXML(List<Permission> permissions) {
+	private void generateWidgetPermissionsXML(IndentedStringBuilder sb, List<Permission> permissions) {
         String permissionClass = "ProcessStateWidgetPermission";
-        return generatePermissionsXml(permissions, permissionClass);
+        generatePermissionsXml(sb, permissions, permissionClass);
 	}
-	private String generateStatePermissionsXML(List<Permission> permissions) {
+	private void generateStatePermissionsXML(IndentedStringBuilder sb, List<Permission> permissions) {
         String permissionClass = "ProcessStatePermission";
-        return generatePermissionsXml(permissions, permissionClass);
+        generatePermissionsXml(sb, permissions, permissionClass);
 	}
 
-    private String generatePermissionsXml(List<Permission> permissions, String permissionClass) {
-        if (permissions.isEmpty())
-            return "";
-        StringBuilder sb = new StringBuilder();
+    private void generatePermissionsXml(IndentedStringBuilder sb, List<Permission> permissions, String permissionClass) {
+        if (permissions.isEmpty()) {
+			return;
+		}
+
         sb.append("<permissions>\n");
+		sb.begin();
         for (Permission p : permissions) {
-            sb.append(String.format("<config." + permissionClass + " privilegeName=\"%s\" roleName=\"%s\"/>",
+            sb.append(String.format("<config." + permissionClass + " privilegeName=\"%s\" roleName=\"%s\"/>\n",
                     p.getPrivilegeName(),
                     p.getRoleName()));
         }
+		sb.end();
         sb.append("</permissions>\n");
-        return sb.toString();
     }
 
-    public String generateWidgetXML() {
-		StringBuilder sb = new StringBuilder();
+    public void generateWidgetXML(IndentedStringBuilder sb) {
 		sb.append(String.format("<config.ProcessStateConfiguration description=\"%s\" name=\"%s\">\n", description, name));
-        if (commentary != null) {
-            sb.append(String.format("<commentary>%s</commentary>", XmlUtil.wrapCDATA(commentary)));
+		sb.begin();
+        if (hasText(commentary)) {
+            sb.append(String.format("<commentary>%s</commentary>\n", XmlUtil.wrapCDATA(commentary)));
         }
 
 		sb.append("<widgets>\n");
-		sb.append(generateWidgetPermissionsXML(widget.getPermissions()));
-		sb.append(generateAttributesXML(widget.getAttributesMap()));
-		sb.append(generateChildrenXML(widget.getChildrenList(), false));
+		sb.begin();
+		generateWidgetPermissionsXML(sb, widget.getPermissions());
+		generateAttributesXML(sb, widget.getAttributesMap());
+		generateChildrenXML(sb, widget.getChildrenList(), false);
+		sb.end();
 		sb.append("</widgets>\n");
 
         if (!outgoing.isEmpty()) {
             sb.append("<actions>\n");
+			sb.begin();
             if (outgoing.values().size() != 1) {
                 throw new RuntimeException("User task: " + name + " has more than one outgoing transition.");
             }
             JPDLTransition next = outgoing.values().iterator().next();
             JPDLComponent component = generator.findComponent(next.getTarget());
             if (component instanceof JPDLDecision) {
-                for (JPDLTransition trans : component.getOutgoing().values()) {
-                    sb.append(trans.generateStateActionXML());
+                for (JPDLTransition trans : component.getOrderedTransitions()) {
+                    trans.generateStateActionXML(sb);
                 }
             } else {//normal button,
-                for (JPDLTransition trans : outgoing.values()) {
-                    sb.append(trans.generateStateActionXML());
+                for (JPDLTransition trans : getOrderedTransitions()) {
+                    trans.generateStateActionXML(sb);
                 }
             }
+			sb.end();
             sb.append("</actions>\n");
         }
-        sb.append(generateStatePermissionsXML(permissions));
+        generateStatePermissionsXML(sb, permissions);
+		sb.end();
 		sb.append("</config.ProcessStateConfiguration>\n");
-		return sb.toString();
 	}
 
 	public String getSwimlane() {

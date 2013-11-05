@@ -1,16 +1,16 @@
 package pl.net.bluesoft.rnd.processtool.editor.jpdl.object;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import pl.net.bluesoft.rnd.processtool.editor.AperteWorkflowDefinitionGenerator;
+import pl.net.bluesoft.rnd.processtool.editor.IndentedStringBuilder;
 
 public abstract class JPDLComponent extends JPDLObject {
 
-	protected Map<String, JPDLTransition> outgoing = new HashMap<String, JPDLTransition>();
+	protected Map<String, JPDLTransition> outgoing = new TreeMap<String, JPDLTransition>();
 
     protected int boundsX, boundsY, width, height;
     protected int offsetX, offsetY;
@@ -30,7 +30,7 @@ public abstract class JPDLComponent extends JPDLObject {
 	}
 
 	public void setOutgoing(Map<String, JPDLTransition> outgoing) {
-		this.outgoing = outgoing;
+		this.outgoing = outgoing != null ? new TreeMap<String, JPDLTransition>(outgoing) : null;
 	}
 	
 	public JPDLTransition getTransition(String resourceId) {
@@ -41,8 +41,9 @@ public abstract class JPDLComponent extends JPDLObject {
 		outgoing.put(resourceId, transition);
 	}
 	
-	public abstract String toXML();
+	public abstract void toXML(IndentedStringBuilder sb);
 	
+	@Override
 	public void fillBasicProperties(JSONObject json) throws JSONException {
 		super.fillBasicProperties(json);
 		
@@ -64,20 +65,40 @@ public abstract class JPDLComponent extends JPDLObject {
         }
 	}
 	
-	protected String getTransitionsXML() {
-		StringBuilder sb = new StringBuilder();
-		
-		for (String targetResourceId : outgoing.keySet()) {
-			JPDLTransition transition = outgoing.get(targetResourceId);
+	protected void getTransitionsXML(IndentedStringBuilder sb) {
+		for (JPDLTransition transition : getOrderedTransitions()) {
 			sb.append(String.format("<transition %s name=\"%s\" to=\"%s\">\n", transition.getDockers(offsetX, offsetY), transition.getName(), transition.getTargetName()));
-			if (transition.getCondition() != null && transition.getCondition().trim().length() > 0) {
+			sb.begin();
+			if (transition.getCondition() != null && !transition.getCondition().trim().isEmpty()) {
 				sb.append(String.format("<condition expr=\"%s\"/>\n", transition.getCondition()));
 			}
-			//sb.append(String.format("<description>Original ID: '%s'</description>\n", transition.getResourceId()));
+			sb.end();
 			sb.append("</transition>\n");
 		}
-		
-		return sb.toString();
 	}
 
+	public List<JPDLTransition> getOrderedTransitions() {
+		List<JPDLTransition> result = new ArrayList<JPDLTransition>(outgoing.values());
+		Collections.sort(result, BY_NAME);
+		return result;
+	}
+
+	private static final Comparator<JPDLTransition> BY_NAME = new Comparator<JPDLTransition>() {
+		@Override
+		public int compare(JPDLTransition t1, JPDLTransition t2) {
+			String n1 = t1.getName();
+			String n2 = t2.getName();
+
+			if (n1 == n2) {
+				return 0;
+			}
+			if (n1 == null) {
+				return 1;
+			}
+			if (n2 == null) {
+				return -1;
+			}
+			return n1.compareTo(n2);
+		}
+	};
 }

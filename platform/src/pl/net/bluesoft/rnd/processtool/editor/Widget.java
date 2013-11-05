@@ -2,17 +2,14 @@ package pl.net.bluesoft.rnd.processtool.editor;
 
 import org.aperteworkflow.editor.domain.Permission;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class Widget {
   
 	private List<Widget> childrenList = new ArrayList<Widget>();
 	private String widgetId;
     private Integer priority;
-	private Map<String,Object> attributesMap = new HashMap<String,Object>();
+	private Map<String,Object> attributesMap = new TreeMap<String,Object>();
 	private List<Permission> permissions = new ArrayList<Permission>();
 	
 	public void addChildWidget(Widget w) {
@@ -40,7 +37,7 @@ public class Widget {
 	}
 
 	public void setAttributesMap(Map<String, Object> attributesMap) {
-		this.attributesMap = attributesMap;
+		this.attributesMap = attributesMap != null ? new TreeMap<String, Object>(attributesMap) : null;
 	}
 	
 	public void putAttribute(String key, Object value) {

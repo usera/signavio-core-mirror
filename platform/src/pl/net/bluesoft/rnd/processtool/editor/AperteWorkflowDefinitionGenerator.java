@@ -37,11 +37,13 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.*;
 
+import static pl.net.bluesoft.rnd.processtool.editor.XmlUtil.hasText;
+
 public class AperteWorkflowDefinitionGenerator {
 
     //key = resourceId
-    private Map<String, JPDLComponent> componentMap = new HashMap<String, JPDLComponent>();
-    private Map<String, JPDLTransition> transitionMap = new HashMap<String, JPDLTransition>();
+    private Map<String, JPDLComponent> componentMap = new TreeMap<String, JPDLComponent>();
+    private Map<String, JPDLTransition> transitionMap = new TreeMap<String, JPDLTransition>();
 
     private String json;
 
@@ -125,18 +127,41 @@ public class AperteWorkflowDefinitionGenerator {
         }
 
         //second pass, complete the transition map
-        for (String key : componentMap.keySet()) {
-            JPDLComponent cmp = componentMap.get(key);
+        for (JPDLComponent cmp : getOrderedComponents()) {
             for (String resourceId : cmp.getOutgoing().keySet()) {
                 JPDLTransition transition = transitionMap.get(resourceId);
                 transition.setTargetName(componentMap.get(transition.getTarget()).getName());
                 cmp.putTransition(resourceId, transition);
             }
         }
-
     }
 
-    public String generateDefinition() {
+	private List<JPDLComponent> getOrderedComponents() {
+		List<JPDLComponent> result = new ArrayList<JPDLComponent>(componentMap.values());
+		Collections.sort(result, BY_NAME);
+		return result;
+	}
+
+	private static final Comparator<JPDLComponent> BY_NAME = new Comparator<JPDLComponent>() {
+		@Override
+		public int compare(JPDLComponent c1, JPDLComponent c2) {
+			String n1 = c1.getName();
+			String n2 = c2.getName();
+
+			if (n1 == n2) {
+				return 0;
+			}
+			if (n1 == null) {
+				return 1;
+			}
+			if (n2 == null) {
+				return -1;
+			}
+			return n1.compareTo(n2);
+		}
+	};
+
+	public String generateDefinition() {
         if ("jpdl".equals(processDefinitionLanguage)) {
             return generateJpdl();
         } else {
@@ -147,17 +172,16 @@ public class AperteWorkflowDefinitionGenerator {
 
 
     public String generateJpdl() {
-        StringBuffer jpdl = new StringBuffer();
+		IndentedStringBuilder jpdl = new IndentedStringBuilder(8*1024);
         jpdl.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         jpdl.append(String.format("<process name=\"%s\" xmlns=\"http://jbpm.org/4.4/jpdl\">\n", processName));
+		jpdl.begin();
+        Set<String> swimlanes = new TreeSet<String>();
 
-        Set<String> swimlanes = new HashSet<String>();
-
-        for (String key : componentMap.keySet()) {
-            JPDLComponent comp = componentMap.get(key);
+        for (JPDLComponent comp : getOrderedComponents()) {
             if (comp instanceof JPDLUserTask) {
                 JPDLUserTask userTask = (JPDLUserTask) comp;
-                if (userTask.getSwimlane() != null && userTask.getSwimlane().trim().length() > 0) {
+                if (userTask.getSwimlane() != null && !userTask.getSwimlane().trim().isEmpty()) {
                     swimlanes.add(userTask.getSwimlane());
                 }
             }
@@ -167,18 +191,17 @@ public class AperteWorkflowDefinitionGenerator {
             jpdl.append(String.format("<swimlane candidate-groups=\"%s\" name=\"%s\"/>\n", sl, sl));
         }
 
-
-        for (String key : componentMap.keySet()) {
-            jpdl.append(componentMap.get(key).toXML());
+        for (JPDLComponent comp : getOrderedComponents()) {
+            comp.toXML(jpdl);
         }
 
+		jpdl.end();
         jpdl.append("</process>");
 
         return jpdl.toString();
     }
 
     public String generateBpmn20() {
-
         try {
             JSONObject jsonObj = enrichModelerDataForBpmn20();
             String jsonForBpmn20 = jsonObj.toString();
@@ -201,8 +224,8 @@ public class AperteWorkflowDefinitionGenerator {
     private JSONObject enrichModelerDataForBpmn20() throws JSONException {
         JSONObject jsonObj = new JSONObject(json);
         JSONArray childShapes = jsonObj.getJSONArray("childShapes");
-        Map<String,JSONObject> outgoingMap = new HashMap<String, JSONObject>();
-        Map<String,JSONObject> resourceIdMap = new HashMap<String, JSONObject>();
+        Map<String,JSONObject> outgoingMap = new TreeMap<String, JSONObject>();
+        Map<String,JSONObject> resourceIdMap = new TreeMap<String, JSONObject>();
         for (int i = 0; i < childShapes.length(); i++) {
             JSONObject obj = childShapes.getJSONObject(i);
             fixBounds(obj);
@@ -399,67 +422,78 @@ public class AperteWorkflowDefinitionGenerator {
     }
 
     public String generateProcessToolConfig() {
-        StringBuffer ptc = new StringBuffer();
+		IndentedStringBuilder ptc = new IndentedStringBuilder(8*1024);
         ptc.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         ptc.append(String.format("<config.ProcessDefinitionConfig bpmDefinitionKey=\"%s\" description=\"%s\" processName=\"%s\"  taskItemClass=\"%s\">\n", processName, processName, processName, processConfig.getTaskItemClass()));
+		ptc.begin();
 
         if (processConfig != null) {
-
-            if (processConfig.getComment() != null && !processConfig.getComment().isEmpty()) {
-                ptc.append(String.format("<comment>%s</comment>", XmlUtil.wrapCDATA(processConfig.getComment())));
-            }
-
-            if (processConfig.getProcessPermissions() != null && !processConfig.getProcessPermissions().isEmpty()) {
-                ptc.append("<permissions>\n");
-
-                for (Permission permission : processConfig.getProcessPermissions()) {
-                    ptc.append(String.format("<config.ProcessDefinitionPermission privilegeName=\"%s\" roleName=\"%s\"/>", permission.getPrivilegeName(), permission.getRoleName()));
-                }
-
-                ptc.append("</permissions>\n");
-            }
-
+			generateComment(ptc);
+			generatePermissions(ptc);
         }
 
-        ptc.append("<states>\n");
+		generateStates(ptc);
 
-        //processtool-config.xml generation
-        for (String key : componentMap.keySet()) {
-            JPDLComponent cmp = componentMap.get(key);
-            if (cmp instanceof JPDLUserTask) {
-                JPDLUserTask task = (JPDLUserTask) cmp;
-                if (task.getWidget() != null) {
-                    ptc.append(task.generateWidgetXML());
-                }
-            }
-            if (cmp instanceof JPDLEndEvent) {
-            	JPDLEndEvent task = (JPDLEndEvent) cmp;
-                if (task.getWidget() != null) {
-                    ptc.append(task.generateWidgetXML());
-                }
-            }
-            
-            
-        }
-
-        ptc.append("</states>\n");
+		ptc.end();
         ptc.append("</config.ProcessDefinitionConfig>\n");
         return ptc.toString();
     }
 
-    public JPDLComponent findComponent(String key) {
+	private void generateComment(IndentedStringBuilder ptc) {
+		if (hasText(processConfig.getComment())) {
+			ptc.append(String.format("<comment>%s</comment>\n", XmlUtil.wrapCDATA(processConfig.getComment())));
+		}
+	}
+
+	private void generatePermissions(IndentedStringBuilder ptc) {
+		if (processConfig.getProcessPermissions() != null && !processConfig.getProcessPermissions().isEmpty()) {
+			ptc.append("<permissions>\n");
+			ptc.begin();
+			for (Permission permission : processConfig.getProcessPermissions()) {
+				ptc.append(String.format("<config.ProcessDefinitionPermission privilegeName=\"%s\" roleName=\"%s\"/>", permission.getPrivilegeName(), permission.getRoleName()));
+			}
+			ptc.end();
+			ptc.append("</permissions>\n");
+		}
+	}
+
+	//processtool-config.xml generation
+
+	private void generateStates(IndentedStringBuilder ptc) {
+		ptc.append("<states>\n");
+		ptc.begin();
+
+		for (JPDLComponent cmp : getOrderedComponents()) {
+			if (cmp instanceof JPDLUserTask) {
+				JPDLUserTask task = (JPDLUserTask) cmp;
+				if (task.getWidget() != null) {
+					task.generateWidgetXML(ptc);
+				}
+			}
+			if (cmp instanceof JPDLEndEvent) {
+				JPDLEndEvent task = (JPDLEndEvent) cmp;
+				if (task.getWidget() != null) {
+					task.generateWidgetXML(ptc);
+				}
+			}
+		}
+		ptc.end();
+		ptc.append("</states>\n");
+	}
+
+	public JPDLComponent findComponent(String key) {
         return componentMap.get(key);
     }
 
     public String generateQueuesConfig() {
-
-        StringBuffer q = new StringBuffer();
+        IndentedStringBuilder q = new IndentedStringBuilder(1024);
         q.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         q.append("<list>\n");
+		q.begin();
 
         if (processConfig != null) {
             if (processConfig.getQueues() != null && !processConfig.getQueues().isEmpty()) {
-                for (Queue queue : processConfig.getQueues()) {
+                for (Queue queue : getOrderedQueues()) {
                     String description = queue.getDescription();
                     if (description == null) {
                         description = queue.getName();
@@ -470,7 +504,9 @@ public class AperteWorkflowDefinitionGenerator {
                             queue.getName(),
                             description
                     ));
+					q.begin();
                     q.append("<rights>\n");
+					q.begin();
 
                     if (queue.getRolePermissions() != null && !queue.getRolePermissions().isEmpty()) {
                         for (QueueRolePermission rolePermission : queue.getRolePermissions()) {
@@ -482,17 +518,44 @@ public class AperteWorkflowDefinitionGenerator {
                         }
                     }
 
+					q.end();
                     q.append("</rights>\n");
+					q.end();
                     q.append("</config.ProcessQueueConfig>\n");
                 }
             }
         }
-
+		q.end();
         q.append("</list>\n");
         return q.toString();
     }
 
-    public String getProcessDefinitionLanguage() {
+	private List<Queue> getOrderedQueues() {
+		List<Queue> result = new ArrayList<Queue>(processConfig.getQueues());
+		Collections.sort(result, BY_QUEUE_NAME);
+		return result;
+	}
+
+	private static final Comparator<Queue> BY_QUEUE_NAME = new Comparator<Queue>() {
+		@Override
+		public int compare(Queue q1, Queue q2) {
+			String n1 = q1.getName();
+			String n2 = q2.getName();
+
+			if (n1 == n2) {
+				return 0;
+			}
+			if (n1 == null) {
+				return 1;
+			}
+			if (n2 == null) {
+				return -1;
+			}
+			return n1.compareTo(n2);
+		}
+	};
+
+	public String getProcessDefinitionLanguage() {
         return processDefinitionLanguage;
     }
 

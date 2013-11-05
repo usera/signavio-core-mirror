@@ -7,6 +7,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import pl.net.bluesoft.rnd.processtool.editor.AperteWorkflowDefinitionGenerator;
+import pl.net.bluesoft.rnd.processtool.editor.IndentedStringBuilder;
 import pl.net.bluesoft.rnd.processtool.editor.XmlUtil;
 
 import java.util.*;
@@ -27,8 +28,8 @@ public class JPDLTransition extends JPDLObject {
     //action properties
     private String buttonName;
     private List<String> actionPermissions = new ArrayList<String>();
-    private Map<String,String> actionAttributes = new HashMap<String,String>();
-    private Map<String,Object> actionAutowiredProperties = new HashMap<String,Object>();
+    private Map<String,String> actionAttributes = new TreeMap<String,String>();
+    private Map<String,Object> actionAutowiredProperties = new TreeMap<String,Object>();
     
     //for 'decision'
     private String condition;
@@ -65,45 +66,45 @@ public class JPDLTransition extends JPDLObject {
 		this.buttonName = buttonName;
 	}
 
-	private String generateActionPermissionsXML() {
-		StringBuffer sb = new StringBuffer();
+	private void generateActionPermissionsXML(IndentedStringBuilder sb) {
 		if (!actionPermissions.isEmpty()) {
-		  sb.append("<permissions>\n");
+			sb.append("<permissions>\n");
+			sb.begin();
 		}
 		for (String perm : actionPermissions) {
 			sb.append(String.format("<config.ProcessStateActionPermission roleName=\"%s\" />\n", perm));
 		}
 		if (!actionPermissions.isEmpty()) {
-		  sb.append("</permissions>\n");
+			sb.end();
+			sb.append("</permissions>\n");
 		}
-		return sb.toString();
 	}
 	
-	private String generateActionAttributesXML() {
-		StringBuffer sb = new StringBuffer();
+	private void generateActionAttributesXML(IndentedStringBuilder sb) {
 		if (!actionAttributes.isEmpty()) {
-		  sb.append("<attributes>\n");
+			sb.append("<attributes>\n");
+			sb.begin();
 		}
 		for (String name : actionAttributes.keySet()) {
 			sb.append(String.format("<config.ProcessStateActionAttribute name=\"%s\" value=\"%s\" />\n", name, actionAttributes.get(name)));
 		}
 		if (!actionAttributes.isEmpty()) {
-		  sb.append("</attributes>\n");
+			sb.end();
+			sb.append("</attributes>\n");
 		}
-		return sb.toString();
 	}
 	
-	public String generateStateActionXML() {
-		StringBuffer sb = new StringBuffer();
+	public void generateStateActionXML(IndentedStringBuilder sb) {
 		sb.append(String.format("<config.ProcessStateAction bpmName=\"%s\" buttonName=\"%s\" ", name, buttonName));
 		for (String name : actionAutowiredProperties.keySet()) {
 			sb.append(String.format("%s=\"%s\" ", name, actionAutowiredProperties.get(name)));
 		}
 	    sb.append(" >\n");
-	    sb.append(generateActionPermissionsXML());
-	    sb.append(generateActionAttributesXML());
+		sb.begin();
+	    generateActionPermissionsXML(sb);
+	    generateActionAttributesXML(sb);
+		sb.end();
 	    sb.append("</config.ProcessStateAction>\n");
-	    return sb.toString();
 	}
  
 	public void fillBasicProperties(JSONObject json) throws JSONException {
@@ -171,15 +172,15 @@ public class JPDLTransition extends JPDLObject {
 	}
 	
 	public String getDockers(int offsetX, int offsetY) {
-		StringBuffer dockerString = new StringBuffer();
+		StringBuilder dockerString = new StringBuilder();
 		for(Docker d : dockers) {
-			dockerString.append(d.getX()+offsetX).append(",").append(d.getY()+offsetY);
+			dockerString.append(d.getX()+offsetX).append(',').append(d.getY()+offsetY);
 			if(dockers.indexOf(d) == dockers.size() - 1)
 				dockerString.append(":0,0");
 			else
-				dockerString.append(";");
+				dockerString.append(';');
 		}
-		return "g=\"" + dockerString.toString() + "\"";
+		return "g=\"" + dockerString + '"';
 	}
 	
 	private class Docker {
