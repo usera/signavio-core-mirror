@@ -28,7 +28,7 @@ public class JPDLTransition extends JPDLObject {
     //action properties
     private String buttonName;
     private List<String> actionPermissions = new ArrayList<String>();
-    private Map<String,String> actionAttributes = new TreeMap<String,String>();
+    private Map<String,Object> actionAttributes = new TreeMap<String,Object>();
     private Map<String,Object> actionAutowiredProperties = new TreeMap<String,Object>();
     
     //for 'decision'
@@ -84,20 +84,33 @@ public class JPDLTransition extends JPDLObject {
 		if (!actionAttributes.isEmpty()) {
 			sb.append("<attributes>\n");
 			sb.begin();
-		}
-		for (String name : actionAttributes.keySet()) {
-			sb.append(String.format("<config.ProcessStateActionAttribute name=\"%s\" value=\"%s\" />\n", name, actionAttributes.get(name)));
-		}
-		if (!actionAttributes.isEmpty()) {
+
+			for (String name : actionAttributes.keySet()) {
+				Object value = actionAttributes.get(name);
+				if (!isBlank(value)) {
+					sb.append(String.format("<config.ProcessStateActionAttribute name=\"%s\" value=\"%s\"/>\n", name, value));
+				}
+			}
+
 			sb.end();
 			sb.append("</attributes>\n");
 		}
 	}
-	
+
+	private static boolean isBlank(Object value) {
+		if (value instanceof String) {
+			return ((String)value).trim().isEmpty();
+		}
+		return value == null;
+	}
+
 	public void generateStateActionXML(IndentedStringBuilder sb) {
 		sb.append(String.format("<config.ProcessStateAction bpmName=\"%s\" buttonName=\"%s\" ", name, buttonName));
 		for (String name : actionAutowiredProperties.keySet()) {
-			sb.append(String.format("%s=\"%s\" ", name, actionAutowiredProperties.get(name)));
+			Object value = actionAutowiredProperties.get(name);
+			if (!isBlank(value)) {
+				sb.append(String.format("%s=\"%s\" ", name, value));
+			}
 		}
 	    sb.append(" >\n");
 		sb.begin();
@@ -146,24 +159,21 @@ public class JPDLTransition extends JPDLObject {
 				 actionPermissions.add(obj.optString("rolename"));
 			 }
 		}
-		JSONObject attributes = properties.optJSONObject("action-attributes");
-		if (attributes != null) {
-			 JSONArray attributesItems = attributes.optJSONArray("items");
-			 for (int i = 0; i < attributesItems.length(); i++) {
-				 JSONObject obj = attributesItems.getJSONObject(i);
-				 actionAttributes.put(obj.optString("attributename"), obj.optString("attributevalue"));
-			 }
-		}
-		String autowiredProps = properties.optString("action-properties");
+
+		loadAttributeMap(properties, "action-properties", actionAutowiredProperties);
+		loadAttributeMap(properties, "action-attributes", actionAttributes);
+	}
+
+	private void loadAttributeMap(JSONObject properties, String propertyName, Map<String, Object> targetMap) throws JSONException {
+		String autowiredProps = properties.optString(propertyName);
 		if (!StringUtils.isEmpty(autowiredProps)) {
 			JSONObject jsonObj = new JSONObject(XmlUtil.decodeXmlEscapeCharacters(autowiredProps));
 			Iterator i = jsonObj.keys();
-		    while (i.hasNext()) {
-		    	String key = (String)i.next();
-		    	actionAutowiredProperties.put(key, jsonObj.get(key));
-		    }
+			while (i.hasNext()) {
+				String key = (String)i.next();
+				targetMap.put(key, jsonObj.get(key));
+			}
 		}
-		
 	}
 	
 	@Override

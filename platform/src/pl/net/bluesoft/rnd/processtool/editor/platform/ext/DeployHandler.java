@@ -244,6 +244,16 @@ public class DeployHandler extends BasisHandler {
                 }
             }
 
+			if (messages.containsKey("pl")) {
+				String propertiesFilename = "messages.properties";
+
+				String messagesContent = messages.get("pl");
+				if (messagesContent != null) {
+					addEntry(processDir + propertiesFilename, target, new ByteArrayInputStream(messagesContent.getBytes("US-ASCII")));
+					propertiesFiles += propertiesFilename + ",";
+				}
+			}
+
             if (propertiesFiles != null && !propertiesFiles.isEmpty()) {
                 if (propertiesFiles.endsWith(",")) {
                     propertiesFiles = propertiesFiles.substring(0, propertiesFiles.length() - 1);
